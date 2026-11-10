@@ -359,6 +359,7 @@ html[lang=ru] .lmres{font-family:'Russo One',Impact,sans-serif}
       <div class="msg" id="rkmsg">Launch, then cash out before it crashes.</div>
       <div class="stats"><div><small>Chips</small><br><b class="balx">1000</b></div></div>
       <div class="bets" id="rkbets"></div>
+      <div class="betbar"><label for="rkauto">Auto cash-out ×</label><input id="rkauto" type="number" min="1.1" step="0.1" inputmode="decimal" placeholder="off"></div>
       <button class="spin-btn" id="rkgo">Launch</button>
       <button class="reset">Out of chips? Visit the bank</button>
     </div>
@@ -477,7 +478,7 @@ html[lang=ru] .lmres{font-family:'Russo One',Impact,sans-serif}
     <div class="machine">
       <div class="ball green" id="ball">0</div>
       <div class="msg" id="rlmsg">Pick a color and spin.</div>
-      <div class="picks"><button class="pickr" data-p="red" aria-pressed="true">Red<br>×2</button><button class="pickr" data-p="green" aria-pressed="false">Green 0<br>×14</button><button class="pickr" data-p="black" aria-pressed="false">Black<br>×2</button></div>
+      <div class="picks"><button class="pickr" data-p="red" aria-pressed="true">Red<br>×2</button><button class="pickr" data-p="green" aria-pressed="false">Green 0<br>×14</button><button class="pickr" data-p="black" aria-pressed="false">Black<br>×2</button><button class="pickr" data-p="odd" aria-pressed="false">Odd<br>×2</button><button class="pickr" data-p="even" aria-pressed="false">Even<br>×2</button></div>
       <div class="stats"><div><small>Chips</small><br><b class="balx">1000</b></div></div>
       <div class="bets" id="rlbets"></div>
       <button class="spin-btn" id="rlgo">Spin</button>
@@ -718,16 +719,16 @@ function roll(){if(busy||locked||bal<bet)return;busy=true;bal-=bet;save();render
 $('roll').onclick=roll;
 makeBets('rkbets');makeBets('rlbets');
 /* Rocket (crash game) */
-let rkRaf=0,rkT0=0,rkCrash=1,rkBet=0,rkM=1;
+let rkAT=0,rkRaf=0,rkT0=0,rkCrash=1,rkBet=0,rkM=1;
 function rkMsg(t,c){const m=$('rkmsg');m.textContent=t;m.className='msg '+(c||'')}
 function rkDraw(m,crashed){sfx.engineSet(m);$('rkm').textContent=m.toFixed(2)+'×';const h=Math.min(1,Math.log(m)/Math.log(20));$('rocket').style.bottom=(8+h*62)+'%';$('rocket').textContent=crashed?'💥':'🚀'}
 function rkGo(){
   if(!locked){if(busy||bal<bet)return;bal-=bet;rkBet=bet;save();locked=true;
     rkCrash=Math.min(1000,Math.max(1,Math.floor(96/(1-Math.random()))/100));
-    rkM=1;rkT0=performance.now();rkDraw(1);$('rkgo').textContent='Cash out';rkMsg('Cash out before it crashes!');$('rkbox').className='sky fly';sfx.engineStart();render();
+    {const a=parseFloat($('rkauto').value);rkAT=a>=1.1?a:0}rkM=1;rkT0=performance.now();rkDraw(1);$('rkgo').textContent='Cash out';rkMsg('Cash out before it crashes!');$('rkbox').className='sky fly';sfx.engineStart();render();
     rkRaf=requestAnimationFrame(rkTick)}
   else rkCash()}
-function rkTick(now){const m=Math.exp(0.12*(now-rkT0)/1000);
+function rkTick(now){const m=Math.exp(0.12*(now-rkT0)/1000);if(rkAT&&m>=rkAT&&rkAT<rkCrash){rkM=rkAT;rkDraw(rkAT);rkCash();return}
   if(m>=rkCrash){rkM=rkCrash;rkDraw(rkCrash,true);sfx.engineStop();sfx.boom();locked=false;$('rkgo').textContent='Launch';rkMsg('Crashed at '+rkCrash.toFixed(2)+'×. You lose '+rkBet+' chips.','lose');$('rkbox').className='sky crashed';render();return}
   rkM=m;rkDraw(m);rkRaf=requestAnimationFrame(rkTick)}
 function rkCash(){cancelAnimationFrame(rkRaf);sfx.engineStop();sfx.cash();$('rkbox').className='sky cashed';const pay=Math.floor(rkBet*rkM);bal+=pay;save();locked=false;$('rkgo').textContent='Launch';rkMsg('Cashed out at '+rkM.toFixed(2)+'×. Payout: '+pay+' chips.',pay>rkBet?'win':'lose');render()}
@@ -1124,7 +1125,7 @@ function setBall(n){const e=$('ball');e.textContent=n;e.className='ball '+rcol(n
 function spinR(){if(busy||locked||bal<bet)return;busy=true;bal-=bet;save();render();$('rlmsg').textContent='No more bets…';$('rlmsg').className='msg';
   let tk=0,stop=false;const step=()=>{if(stop)return;setBall(Math.floor(Math.random()*37));sfx.tick();tk++;setTimeout(step,60+tk*tk*1.2)};step();
   const n=Math.floor(Math.random()*37);
-  setTimeout(()=>{stop=true;setBall(n);sfx.thud();const c=rcol(n);const mult=c!==pickR?0:(c==='green'?14:2);busy=false;bal+=mult*bet;save();
+  setTimeout(()=>{stop=true;setBall(n);sfx.thud();const c=rcol(n);const mult=pickR==='odd'?(n%2===1?2:0):pickR==='even'?(n>0&&n%2===0?2:0):c!==pickR?0:(c==='green'?14:2);busy=false;bal+=mult*bet;save();
     $('rlmsg').textContent=n+' '+c+(mult?'. You win '+mult*bet+' chips.':'. No win.');$('rlmsg').className='msg '+(mult?'win':'lose');render()},2700)}
 $('rlgo').onclick=spinR;
 /* Bank: levels, crosses, shop, loans, stocks, wheel */
@@ -1603,5 +1604,11 @@ function applyFavorites(){const menu=document.querySelector('.tabs');[...favorit
 for(const tab of favoriteTabs){if(['bk','st'].includes(tab.dataset.g))continue;const b=document.createElement('button');b.type='button';b.className='favorite-choice act';b.dataset.favGame=tab.dataset.g;const name=document.createElement('span');name.textContent=tab.textContent;b.appendChild(name);b.onclick=()=>{const g=b.dataset.favGame;favoriteGames=favoriteGames.includes(g)?favoriteGames.filter(x=>x!==g):[...favoriteGames,g];try{localStorage.setItem('motelFavoriteGames',JSON.stringify(favoriteGames))}catch(e){}applyFavorites()};$('favorite-choices').appendChild(b)}applyFavorites();
 const uiTabs=document.querySelector('.tabs');uiTabs.addEventListener('keydown',e=>{if(!['ArrowRight','ArrowLeft','ArrowDown','ArrowUp','Home','End'].includes(e.key)||!e.target.matches('.tab'))return;const tabs=[...uiTabs.querySelectorAll('.tab')];let i=tabs.indexOf(e.target);i=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(['ArrowRight','ArrowDown'].includes(e.key)?1:-1)+tabs.length)%tabs.length;e.preventDefault();tabs[i].focus();tabs[i].click()});
 
+Object.assign(RU,{'Odd':'Нечёт','Even':'Чёт','Auto cash-out ×':'Автовывод ×'});
+const HK={bj:'deal',dice:'roll',rk:'rkgo',rl:'rlgo',hl:'hlgo',mn:'mngo',pl:'pldrop',wh:'whgo',kn:'kgo',sc:'scbuy',vp:'vpgo',tw:'twgo',ba:'bago',lm:'lmgo'};
+document.addEventListener('keydown',e=>{if(e.target!==document.body||e.repeat)return;
+ if(e.code==='Space'&&HK[curGame]){const b=$(HK[curGame]);if(b&&!b.disabled){e.preventDefault();b.click()}}
+ else if(curGame==='bj'&&e.code==='KeyH'&&!$('hit').disabled)$('hit').click();
+ else if(curGame==='bj'&&e.code==='KeyS'&&!$('stand').disabled)$('stand').click()});
 setLang(lang);jpShow();render();
 </script></body></html>
